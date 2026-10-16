@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A connected notes workspace powered by Azure SQL.">
+  <title>Azure SQL Notes | Cloud Workspace</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --panel: rgba(15, 31, 52, .78);
+      --panel-solid: #0f2036;
+      --border: rgba(145, 181, 220, .16);
+      --text: #f3f7fc;
+      --muted: #8fa5bf;
+      --blue: #4da3ff;
+      --cyan: #51d5dc;
+      --success: #52d69b;
+      --danger: #ff7188;
+      --shadow: 0 20px 60px rgba(0, 0, 0, .24);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 83% 0%, rgba(57, 126, 235, .22), transparent 30rem),
+        radial-gradient(circle at 0% 50%, rgba(16, 187, 187, .09), transparent 28rem),
+        var(--bg);
+    }
+    button, input { font: inherit; }
+    .shell { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 56px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 64px; }
+    .brand { display: flex; align-items: center; gap: 12px; color: var(--text); font-weight: 750; letter-spacing: -.02em; }
+    .brand-mark {
+      display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px;
+      background: linear-gradient(135deg, var(--blue), var(--cyan)); color: #061425;
+      box-shadow: 0 8px 22px rgba(77, 163, 255, .25);
+    }
+    .brand span { font-size: 16px; }
+    .eyebrow { margin: 0 0 13px; color: var(--cyan); font-size: 12px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+    .hero { max-width: 720px; margin-bottom: 42px; }
+    h1 { margin: 0 0 16px; max-width: 680px; font-size: clamp(38px, 6vw, 68px); line-height: 1.03; letter-spacing: -.055em; }
+    .hero-copy { max-width: 590px; margin: 0; color: var(--muted); font-size: 17px; }
+    .status {
+      display: inline-flex; align-items: center; gap: 9px; padding: 8px 13px; border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted); background: rgba(11, 26, 44, .64); font-size: 13px;
+    }
+    .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #8294a8; box-shadow: 0 0 0 4px rgba(130,148,168,.1); }
+    .status.ok { color: #a8f3d0; border-color: rgba(82, 214, 155, .24); }
+    .status.ok::before { background: var(--success); box-shadow: 0 0 0 4px rgba(82, 214, 155, .13); }
+    .status.bad { color: #ffabb8; border-color: rgba(255, 113, 136, .25); }
+    .status.bad::before { background: var(--danger); box-shadow: 0 0 0 4px rgba(255, 113, 136, .12); }
+    .overview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 38px; }
+    .metric, .workspace { border: 1px solid var(--border); background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(14px); }
+    .metric { min-height: 119px; padding: 21px; border-radius: 17px; }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .metric-value { display: block; margin-top: 13px; font-size: 27px; font-weight: 760; letter-spacing: -.04em; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); overflow: hidden; border-radius: 22px; }
+    .notes-panel, .architecture-panel { padding: 30px; }
+    .architecture-panel { border-left: 1px solid var(--border); background: rgba(7, 18, 32, .28); }
+    .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 22px; }
+    h2 { margin: 0; font-size: 21px; letter-spacing: -.03em; }
+    .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .count { padding: 5px 9px; border-radius: 7px; color: #a6d3ff; background: rgba(77, 163, 255, .12); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    form { display: flex; gap: 10px; margin-bottom: 24px; }
+    input {
+      width: 100%; min-width: 0; padding: 13px 15px; border: 1px solid var(--border); border-radius: 10px;
+      outline: none; color: var(--text); background: rgba(4, 14, 27, .7); transition: border-color .2s, box-shadow .2s;
+    }
+    input::placeholder { color: #6d819a; }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(77, 163, 255, .13); }
+    button { border: 0; border-radius: 10px; padding: 0 20px; color: #061425; background: linear-gradient(135deg, #66b5ff, #67d8d3); font-weight: 800; cursor: pointer; transition: transform .2s, filter .2s; }
+    button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    button:disabled { cursor: wait; opacity: .65; transform: none; }
+    .notes-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .note { display: flex; align-items: flex-start; gap: 13px; padding: 15px; border: 1px solid rgba(145,181,220,.1); border-radius: 12px; background: rgba(21, 42, 67, .45); }
+    .note-icon { flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--cyan); background: rgba(81, 213, 220, .1); }
+    .note-text { margin: 1px 0 4px; color: #dce8f5; overflow-wrap: anywhere; }
+    .note-time { color: var(--muted); font-size: 12px; }
+    .empty { padding: 32px 15px; border: 1px dashed rgba(145,181,220,.2); border-radius: 12px; color: var(--muted); text-align: center; }
+    .empty strong { display: block; margin-bottom: 4px; color: #dce8f5; }
+    .architecture-panel h2 { margin-bottom: 22px; }
+    .flow { display: grid; gap: 0; }
+    .flow-step { position: relative; display: flex; align-items: center; gap: 13px; padding-bottom: 24px; }
+    .flow-step:not(:last-child)::after { content: ""; position: absolute; top: 34px; left: 16px; width: 1px; height: calc(100% - 22px); background: linear-gradient(var(--blue), rgba(77,163,255,0)); }
+    .flow-icon { z-index: 1; display: grid; place-items: center; width: 33px; height: 33px; border: 1px solid rgba(77,163,255,.35); border-radius: 9px; color: #92c9ff; background: #102944; }
+    .flow-copy strong { display: block; font-size: 14px; }
+    .flow-copy span { color: var(--muted); font-size: 12px; }
+    .footer { margin-top: 25px; color: #61758e; font-size: 12px; }
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 28px, 600px); padding-top: 20px; }
+      .topbar { margin-bottom: 45px; }
+      .overview, .workspace { grid-template-columns: 1fr; }
+      .architecture-panel { border-top: 1px solid var(--border); border-left: 0; }
+      .notes-panel, .architecture-panel { padding: 23px; }
+    }
+    @media (max-width: 430px) {
+      form { flex-direction: column; }
+      button { min-height: 45px; }
+      .overview { gap: 9px; }
+      .metric { min-height: auto; padding: 16px; }
+      .metric-value { margin-top: 7px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17.5V8.8L12 5l7 3.8v8.7L12 21l-7-3.5Z"/><path d="m5 8.8 7 3.7 7-3.7M12 12.5V21"/></svg>
+        </div>
+        <span>CloudNotes</span>
+      </div>
+      <div id="status" class="status" role="status" aria-live="polite">Checking connection…</div>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">Azure SQL workspace</p>
+      <h1>Ideas that stay connected.</h1>
+      <p class="hero-copy">Capture your thoughts in a focused workspace backed by a production-ready cloud database.</p>
+    </section>
+
+    <section class="overview" aria-label="Workspace overview">
+      <article class="metric"><span class="metric-label">Database</span><strong class="metric-value" id="database">Connecting…</strong></article>
+      <article class="metric"><span class="metric-label">Saved notes</span><strong class="metric-value" id="note-count">—</strong></article>
+      <article class="metric"><span class="metric-label">Workspace status</span><strong class="metric-value" id="workspace-status">Syncing</strong></article>
+    </section>
+
+    <section class="workspace">
+      <div class="notes-panel">
+        <div class="section-heading">
+          <div><h2>Recent notes</h2><p>Your latest thoughts, all in one place.</p></div>
+          <span class="count" id="note-label">0 notes</span>
+        </div>
+        <form id="f">
+          <input id="t" aria-label="New note" placeholder="What would you like to remember?" required maxlength="500">
+          <button id="add-button" type="submit">Add note</button>
+        </form>
+        <ul id="list" class="notes-list" aria-live="polite">
+          <li class="empty"><strong>Loading your notes</strong>Connecting to Azure SQL…</li>
+        </ul>
+      </div>
+      <aside class="architecture-panel">
+        <h2>Built for reliability</h2>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-icon" aria-hidden="true">01</div>
+            <div class="flow-copy"><strong>Write locally</strong><span>Simple, focused note capture</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon" aria-hidden="true">02</div>
+            <div class="flow-copy"><strong>Secure API layer</strong><span>Express-powered backend</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon" aria-hidden="true">03</div>
+            <div class="flow-copy"><strong>Persist in Azure SQL</strong><span>Durable cloud storage</span></div>
+          </div>
+        </div>
+        <p class="footer">Designed as an Azure deployment showcase.</p>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const statusEl = document.getElementById('status');
+    const databaseEl = document.getElementById('database');
+    const workspaceStatusEl = document.getElementById('workspace-status');
+    const countEl = document.getElementById('note-count');
+    const noteLabelEl = document.getElementById('note-label');
+    const listEl = document.getElementById('list');
+    const form = document.getElementById('f');
+    const input = document.getElementById('t');
+    const addButton = document.getElementById('add-button');
+
+    function setStatus(message, type = '') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+
+    function updateCount(count) {
+      countEl.textContent = count;
+      noteLabelEl.textContent = `${count} note${count === 1 ? '' : 's'}`;
+    }
+
+    function showEmpty(title, message) {
+      listEl.innerHTML = `<li class="empty"><strong>${title}</strong>${message}</li>`;
+    }
+
+    async function checkStatus() {
+      try {
+        const response = await fetch('/api/db-status');
+        const data = await response.json();
+        if (!response.ok || !data.connected) throw new Error(data.error || 'Database unavailable');
+        setStatus(`Connected · ${data.db}`, 'ok');
+        databaseEl.textContent = data.db;
+        workspaceStatusEl.textContent = 'Online';
+      } catch (error) {
+        setStatus('Database unavailable', 'bad');
+        databaseEl.textContent = 'Offline';
+        workspaceStatusEl.textContent = 'Needs attention';
+      }
+    }
+
+    async function loadNotes() {
+      try {
+        const response = await fetch('/api/notes');
+        if (!response.ok) throw new Error('Could not load notes');
+        const rows = await response.json();
+        updateCount(rows.length);
+        if (!rows.length) {
+          showEmpty('Your workspace is ready', 'Add your first note above to get started.');
+          return;
+        }
+        listEl.innerHTML = '';
+        rows.forEach((note) => {
+          const item = document.createElement('li');
+          item.className = 'note';
+          item.innerHTML = '<div class="note-icon" aria-hidden="true">✦</div><div><p class="note-text"></p><time class="note-time"></time></div>';
+          item.querySelector('.note-text').textContent = note.Text;
+          item.querySelector('.note-time').textContent = new Date(note.CreatedAt).toLocaleString();
+          listEl.appendChild(item);
+        });
+      } catch (error) {
+        updateCount(0);
+        showEmpty('Notes could not be loaded', 'Check the database connection and try again.');
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      addButton.disabled = true;
+      addButton.textContent = 'Saving…';
+      try {
+        const response = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (!response.ok) throw new Error('Could not save note');
+        input.value = '';
+        await loadNotes();
+      } catch (error) {
+        setStatus('Could not save note', 'bad');
+      } finally {
+        addButton.disabled = false;
+        addButton.textContent = 'Add note';
+      }
+    });
+
+    Promise.all([checkStatus(), loadNotes()]);
+  </script>
+</body>
+</html>
